@@ -111,7 +111,7 @@ void pulseTestSuccessive() {
  * @param motor The motor to drive
  * @param stepCount Number of 1/16 microsteps to take
 */
-void step(const StepperMotor& motor, int stepCount) {
+void step(const StepperMotor& motor, int stepCount, int speed) {
   if(stepCount >= 0) {
     digitalWriteFast(unoPins[motor.dirPin], LOW);
   } else {
@@ -119,9 +119,9 @@ void step(const StepperMotor& motor, int stepCount) {
   }
   for(int i = 0; i < abs(stepCount); i++) {
     digitalWriteFast(unoPins[motor.stepPin], HIGH);
-    delayMicroseconds(STEP_SPEED);
+    delayMicroseconds(speed);
     digitalWriteFast(unoPins[motor.stepPin], LOW);
-    delayMicroseconds(STEP_SPEED);
+    delayMicroseconds(speed);
   }
 }
 
@@ -129,7 +129,7 @@ void step(const StepperMotor& motor, int stepCount) {
  * Move along x axis by one drop width
  */
 void stepDropX() {
-  step(motorX, stepsPerDrop);
+  step(motorX, stepsPerDrop, STEP_SPEED);
   posX += stepsPerDrop;
 }
 
@@ -137,7 +137,7 @@ void stepDropX() {
  * Return to initial location on x axis
  */
 void gotoBeginLine() {
-  step(motorX, -posX);
+  step(motorX, -posX, STEP_SPEED);
   posX = 0;
 }
 
@@ -146,7 +146,21 @@ void gotoBeginLine() {
  * Stepper Y controls bed, so it needs to move in negative Y
  */
 void gotoNextLine() {
-  step(motorY, -stepsPerDrop * NOZZLE_COUNT);
+  step(motorY, -stepsPerDrop * NOZZLE_COUNT, STEP_SPEED);
+}
+
+
+/**
+ * Move motor to home position
+ * @param motor The motor to drive
+ */
+void homeMotor(const StepperMotor &motor){
+  while(digitalRead(motor.limitPin)) {             // assuming switch is wired so that not contacted = true
+    step(motor, -1, STEP_SPEED);                  // is debounce needed?
+  }
+  while(!digitalRead(motor.limitPin)) {
+    step(motor, 1, 1000);
+  }
 }
 
 // dispense ink based on bitmask
@@ -214,6 +228,10 @@ void loop() {
           break;
         case 'T': 
           pulseTestSuccessive();
+          break;
+        case 'H':
+          homeMotor(motorX);
+          homeMotor(motorY);
           break;
         default:
           break;
