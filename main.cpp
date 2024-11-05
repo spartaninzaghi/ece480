@@ -32,6 +32,16 @@ constexpr char gotoNextLineCmd = 'N';
 // test nozzles
 constexpr char testNozzlesCmd = 'T';
 
+// home
+constexpr char homeCmd = 'H';
+
+// command line arguments
+struct {
+  char* imagePath = nullptr;
+  bool shouldHome = false;
+  bool shouldTestNozzles = false;
+} cmdLineArgs;
+
 /*
  * read a byte from serial
  */
@@ -191,41 +201,21 @@ std::vector<unsigned char> parseImage(const char *imagePath) {
 }
 
 int main(int argc, char **argv) {
-  char* imagePath = nullptr;
-  bool testFlag = false;
-
-  if (argc < 2) {
-    std::cerr << "usage: " << argv[0] << " -i <image_path> | -test\n";
-    return -1;
-  }
-
-  for (int i = 1; i < argc; i++) {
-    if (strcmp(argv[i], "-i") == 0) {
-      if (i + 1 < argc) {
-        imagePath = argv[i + 1];
-        i++;
-      } else {
-        std::cerr << "error: missing image path\n";
-        return -1;
-      }
-    } else if (strcmp(argv[i], "-test") == 0) {
-      testFlag = true;
-    } else {
-      std::cerr << "error: unknown argument\n";
-      return -1;
+  int opt;
+  while ((opt = getopt(argc, argv, "i:th")) != -1) {
+    switch (opt) {
+      case 'i':
+        cmdLineArgs.imagePath = optarg;
+        break;
+      case 't':
+        cmdLineArgs.shouldTestNozzles = true;
+        break;
+      case 'h':
+        cmdLineArgs.shouldHome = true;
+        break;
+      default:
+        break;
     }
-  }
-
-  std::vector<unsigned char> cmdBuffer;
-  if (imagePath) {
-    cmdBuffer = parseImage(imagePath);
-  } else if (testFlag) {
-    cmdBuffer = { testNozzlesCmd };
-  }
-
-  if (cmdBuffer.empty()) {
-    std::cerr << "failed to parse image\n";
-    return -1;
   }
 
   int fd = openPort(port);
@@ -243,12 +233,30 @@ int main(int argc, char **argv) {
 
   std::cout << "\n\nconnection established\n\n";
 
-  for (const auto cmd : cmdBuffer) {
-    writeChar(fd, cmd);
-    std::cout << "sent: " << cmd << std::endl;
+  if (cmdLineArgs.shouldHome) {
+    writeChar(fd, homeCmd);
+  }
+
+  if (cmdLineArgs.shouldTestNozzles) {
+    writeChar(fd, testNozzlesCmd);
+  }
+
+  if (cmdLineArgs.imagePath) {
+    std::vector<unsigned char> cmdBuffer = parseImage(cmdLineArgs.imagePath);
+
+    if (cmdBuffer.empty()) {
+      std::cerr << "failed to parse image\n";
+      return -1;
+    }
+
+    for (const auto cmd : cmdBuffer) {
+      writeChar(fd, cmd);
+      std::cout << "sent: " << cmd << std::endl;
+    }
   }
 
   std::cout << "\ncompleted\n";
 
   close(fd);
 }
+

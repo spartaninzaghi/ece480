@@ -31,3 +31,5 @@ This program uses [stb_image](https://github.com/nothings/stb/blob/master/stb_im
 - `D`: Changes state of Arduino to dispensing state. The next 2 bytes are intepreted as bitmasks for the nozzles. The LSB of the bitmask controls the nozzle closer to origin. After the nozzles finish dispensing ink, the cartridge is moved to the right by 1 `dotWidth`.
 - `R`: Moves cartridge to the beginning of the current line.
 - `N`: Moves cartridge up by one line `(nozzleCount * dotHeight)`.
+- `T`: Dispense all 12 nozzles for testing
+- `H`: Home
