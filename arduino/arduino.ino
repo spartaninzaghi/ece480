@@ -7,6 +7,8 @@
 #define INCHES_PER_REV 1.5748 // 40 mm per revolution
 #define STEPS_PER_REV 3200    // 200 full steps * 16 microsteps
 #define STEP_SPEED 300
+#define HOMING_SPEED 800
+#define SWITCH_TIME 100
 
 enum CommandMode {
   INSTRUCTION,
@@ -156,10 +158,19 @@ void gotoNextLine() {
  */
 void homeMotor(const StepperMotor &motor){
   while(digitalRead(motor.limitPin)) {             // assuming switch is wired so that not contacted = true
-    step(motor, -1, STEP_SPEED);                  // is debounce needed?
+    step(motor, -1, STEP_SPEED);
+
+    // don't need full debounce, just ensure switch state is maintained before exiting
+    if(digitalRead(motor.limitPin)) {
+      delayMicroseconds(SWITCH_TIME);
+    }
   }
+  // ease off switch at slower speed
   while(!digitalRead(motor.limitPin)) {
-    step(motor, 1, 1000);
+    step(motor, 1, HOMING_SPEED);
+    if(!digitalRead(motor.limitPin)) {
+      delayMicroseconds(SWITCH_TIME);
+    }
   }
 }
 
