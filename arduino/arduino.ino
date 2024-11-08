@@ -9,6 +9,8 @@
 #define STEP_SPEED 300
 #define HOMING_SPEED 800
 #define SWITCH_TIME 100
+#define X_OFFSET 100
+#define Y_OFFSET 0
 
 enum CommandMode {
   INSTRUCTION,
@@ -174,6 +176,13 @@ void homeMotor(const StepperMotor &motor){
   }
 }
 
+void homeSystem() {
+  homeMotor(motorX);
+  step(motorX, X_OFFSET);
+  homeMotor(motorY);
+  step(motorY, Y_OFFSET);
+}
+
 // dispense ink based on bitmask
 // when last mask done, call stepDropX() and change cmdMode to INSTRUCTION
 void dispense(unsigned char mask) {
@@ -213,6 +222,8 @@ void setup() {
   pinMode(motorX.stepPin, OUTPUT);
   pinMode(motorY.dirPin, OUTPUT);
   pinMode(motorY.stepPin, OUTPUT);
+  pinMode(motorY.limitPin, INPUT_PULLUP);
+  pinMode(motorY.limitPin, INPUT_PULLUP);
   
   // Serial setup
   Serial.begin(115200);
@@ -241,8 +252,7 @@ void loop() {
           pulseTestSuccessive();
           break;
         case 'H':
-          homeMotor(motorX);
-          homeMotor(motorY);
+          homeSystem();
           break;
         default:
           break;
