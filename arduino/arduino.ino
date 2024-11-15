@@ -7,6 +7,10 @@
 #define INCHES_PER_REV 1.5748 // 40 mm per revolution
 #define STEPS_PER_REV 3200    // 200 full steps * 16 microsteps
 #define STEP_SPEED 300
+#define HOMING_SPEED 800
+#define SWITCH_TIME 100
+#define X_OFFSET 2000
+#define Y_OFFSET 500
 
 enum CommandMode {
   INSTRUCTION,
@@ -15,9 +19,10 @@ enum CommandMode {
 };
 
 struct StepperMotor {
-  const int dirPin;
-  const int stepPin;
-  const int limitPin;
+  const char name;
+  const uint8_t dirPin;
+  const uint8_t stepPin;
+  const uint8_t limitPin;
 };
 
 struct PinInfo {
@@ -58,8 +63,8 @@ CommandMode cmdMode = INSTRUCTION;
 const int nozzles[] = {14, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2};
 
 // Steppers
-const StepperMotor motorX = {15, 16, 13};
-const StepperMotor motorY = {17, 18, 19};
+const StepperMotor motorX = { 'X', 15, 16, 13};
+const StepperMotor motorY = { 'Y', 17, 18, 19};
 const int stepsPerDrop = (1.0 / DROPS_PER_INCH) * (1.0 / INCHES_PER_REV) * STEPS_PER_REV;
 int posX = 0;
 
@@ -111,7 +116,11 @@ void pulseTestSuccessive() {
  * @param motor The motor to drive
  * @param stepCount Number of 1/16 microsteps to take
 */
-void step(const StepperMotor& motor, int stepCount) {
+void step(const StepperMotor& motor, int stepCount, int speed) {
+  // Stepper Y controls bed, so it needs to move in negative Y
+  if (motor.name == 'Y') {
+    stepCount *= -1;
+  }
   if(stepCount >= 0) {
     digitalWriteFast(unoPins[motor.dirPin], LOW);
   } else {
@@ -119,9 +128,9 @@ void step(const StepperMotor& motor, int stepCount) {
   }
   for(int i = 0; i < abs(stepCount); i++) {
     digitalWriteFast(unoPins[motor.stepPin], HIGH);
-    delayMicroseconds(STEP_SPEED);
+    delayMicroseconds(speed);
     digitalWriteFast(unoPins[motor.stepPin], LOW);
-    delayMicroseconds(STEP_SPEED);
+    delayMicroseconds(speed);
   }
 }
 
@@ -129,7 +138,7 @@ void step(const StepperMotor& motor, int stepCount) {
  * Move along x axis by one drop width
  */
 void stepDropX() {
-  step(motorX, stepsPerDrop);
+  step(motorX, stepsPerDrop, STEP_SPEED);
   posX += stepsPerDrop;
 }
 
@@ -137,16 +146,45 @@ void stepDropX() {
  * Return to initial location on x axis
  */
 void gotoBeginLine() {
-  step(motorX, -posX);
+  step(motorX, -posX, STEP_SPEED);
   posX = 0;
 }
 
 /**
  * Move printhead to next line (printhead moving in positive Y)
- * Stepper Y controls bed, so it needs to move in negative Y
  */
 void gotoNextLine() {
-  step(motorY, -stepsPerDrop * NOZZLE_COUNT);
+  step(motorY, stepsPerDrop * NOZZLE_COUNT, STEP_SPEED);
+}
+
+
+/**
+ * Move motor to home position
+ * @param motor The motor to drive
+ */
+void homeMotor(const StepperMotor &motor){
+  while(digitalRead(motor.limitPin)) {             // assuming switch is wired so that not contacted = true
+    step(motor, -1, STEP_SPEED);
+
+    // don't need full debounce, just ensure switch state is maintained before exiting
+    if(!digitalRead(motor.limitPin)) {
+      delayMicroseconds(SWITCH_TIME);
+    }
+  }
+  // ease off switch at slower speed
+  while(!digitalRead(motor.limitPin)) {
+    step(motor, 1, HOMING_SPEED);
+    if(digitalRead(motor.limitPin)) {
+      delayMicroseconds(SWITCH_TIME);
+    }
+  }
+}
+
+void homeSystem() {
+  homeMotor(motorX);
+  step(motorX, X_OFFSET, HOMING_SPEED);
+  homeMotor(motorY);
+  step(motorY, Y_OFFSET, HOMING_SPEED);
 }
 
 // dispense ink based on bitmask
@@ -188,6 +226,8 @@ void setup() {
   pinMode(motorX.stepPin, OUTPUT);
   pinMode(motorY.dirPin, OUTPUT);
   pinMode(motorY.stepPin, OUTPUT);
+  pinMode(motorX.limitPin, INPUT_PULLUP);
+  pinMode(motorY.limitPin, INPUT_PULLUP);
   
   // Serial setup
   Serial.begin(115200);
@@ -214,6 +254,9 @@ void loop() {
           break;
         case 'T': 
           pulseTestSuccessive();
+          break;
+        case 'H':
+          homeSystem();
           break;
         default:
           break;
