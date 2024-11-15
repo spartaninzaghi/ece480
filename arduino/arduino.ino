@@ -163,24 +163,24 @@ void homeMotor(const StepperMotor &motor){
     step(motor, -1, STEP_SPEED);
 
     // don't need full debounce, just ensure switch state is maintained before exiting
-    if(digitalRead(motor.limitPin)) {
+    if(!digitalRead(motor.limitPin)) {
       delayMicroseconds(SWITCH_TIME);
     }
   }
   // ease off switch at slower speed
   while(!digitalRead(motor.limitPin)) {
     step(motor, 1, HOMING_SPEED);
-    if(!digitalRead(motor.limitPin)) {
+    if(digitalRead(motor.limitPin)) {
       delayMicroseconds(SWITCH_TIME);
     }
   }
 }
 
 void homeSystem() {
-  homeMotor(motorX);
-  step(motorX, X_OFFSET);
+  //homeMotor(motorX);
+  //step(motorX, X_OFFSET, HOMING_SPEED);
   homeMotor(motorY);
-  step(motorY, Y_OFFSET);
+  step(motorY, Y_OFFSET, HOMING_SPEED);
 }
 
 // dispense ink based on bitmask
@@ -222,7 +222,7 @@ void setup() {
   pinMode(motorX.stepPin, OUTPUT);
   pinMode(motorY.dirPin, OUTPUT);
   pinMode(motorY.stepPin, OUTPUT);
-  pinMode(motorY.limitPin, INPUT_PULLUP);
+  pinMode(motorX.limitPin, INPUT_PULLUP);
   pinMode(motorY.limitPin, INPUT_PULLUP);
   
   // Serial setup
