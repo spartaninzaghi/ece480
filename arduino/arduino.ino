@@ -9,8 +9,8 @@
 #define STEP_SPEED 300
 #define HOMING_SPEED 800
 #define SWITCH_TIME 100
-#define X_OFFSET 100
-#define Y_OFFSET 0
+#define X_OFFSET 2000
+#define Y_OFFSET 500
 
 enum CommandMode {
   INSTRUCTION,
@@ -19,9 +19,10 @@ enum CommandMode {
 };
 
 struct StepperMotor {
-  const int dirPin;
-  const int stepPin;
-  const int limitPin;
+  const char name;
+  const uint8_t dirPin;
+  const uint8_t stepPin;
+  const uint8_t limitPin;
 };
 
 struct PinInfo {
@@ -62,8 +63,8 @@ CommandMode cmdMode = INSTRUCTION;
 const int nozzles[] = {14, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2};
 
 // Steppers
-const StepperMotor motorX = {15, 16, 13};
-const StepperMotor motorY = {17, 18, 19};
+const StepperMotor motorX = { 'X', 15, 16, 13};
+const StepperMotor motorY = { 'Y', 17, 18, 19};
 const int stepsPerDrop = (1.0 / DROPS_PER_INCH) * (1.0 / INCHES_PER_REV) * STEPS_PER_REV;
 int posX = 0;
 
@@ -116,6 +117,10 @@ void pulseTestSuccessive() {
  * @param stepCount Number of 1/16 microsteps to take
 */
 void step(const StepperMotor& motor, int stepCount, int speed) {
+  // Stepper Y controls bed, so it needs to move in negative Y
+  if (motor.name == 'Y') {
+    stepCount *= -1;
+  }
   if(stepCount >= 0) {
     digitalWriteFast(unoPins[motor.dirPin], LOW);
   } else {
@@ -147,10 +152,9 @@ void gotoBeginLine() {
 
 /**
  * Move printhead to next line (printhead moving in positive Y)
- * Stepper Y controls bed, so it needs to move in negative Y
  */
 void gotoNextLine() {
-  step(motorY, -stepsPerDrop * NOZZLE_COUNT, STEP_SPEED);
+  step(motorY, stepsPerDrop * NOZZLE_COUNT, STEP_SPEED);
 }
 
 
@@ -177,8 +181,8 @@ void homeMotor(const StepperMotor &motor){
 }
 
 void homeSystem() {
-  //homeMotor(motorX);
-  //step(motorX, X_OFFSET, HOMING_SPEED);
+  homeMotor(motorX);
+  step(motorX, X_OFFSET, HOMING_SPEED);
   homeMotor(motorY);
   step(motorY, Y_OFFSET, HOMING_SPEED);
 }
