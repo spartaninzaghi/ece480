@@ -16,7 +16,7 @@ make
 Usage: ./main [OPTION]
 
   -i <path>    Specify the path to the image file to be printed
-  -t           Test nozzles
+  -t           Test nozzles (dispense all 12 nozzles)
   -h           Home the printhead
 ```
 
@@ -31,22 +31,22 @@ sudo usermod -a -G dialout $USER
 
 #### WSL instructions
 After installing usbipd, open `cmd` in administrator mode, and a WSL terminal, then run
-```bash
+```
 usbipd list
 ```
 
 Find the bus ID of the arduino, then run
-```bash
+```
 usbipd bind --bus-id <bus_id>
 ```
 
 Attach the device to WSL
-```bash
+```
 usbipd attach --busid <bus_id>
 ```
 
 Check to make sure the device shows up in WSL
-```bash
+```
 lsusb
 ```
 
@@ -56,4 +56,4 @@ This program uses [stb_image](https://github.com/nothings/stb/blob/master/stb_im
 - `R`: Moves cartridge to the beginning of the current line.
 - `N`: Moves cartridge up by one line `(nozzleCount * dotHeight)`.
 - `T`: Dispense all 12 nozzles for testing
-- `H`: Home
+- `H`: Home the printhead
